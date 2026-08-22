@@ -270,8 +270,14 @@ def predict_single_customer(
 
     # IMPORTANT:
     # Use transform(), NOT fit_transform().
-    scaled_customer = scaler.transform(
+    scaled_array = scaler.transform(
         customer_df[ML_FEATURES]
+    )
+
+    # Wrap it back into a DataFrame to silence the warning
+    scaled_customer = pd.DataFrame(
+        scaled_array, 
+        columns=ML_FEATURES
     )
 
     # Predict cluster
@@ -345,6 +351,7 @@ def batch_predict_csv(
     scaled_data = scaler.transform(
         result_df[ML_FEATURES]
     )
+
 
     # Predict all customers
     predictions = kmeans_model.predict(
