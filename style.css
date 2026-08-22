@@ -1,0 +1,60 @@
+    /* Push the entire page down slightly from the absolute top edge */
+    .block-container {
+        padding-top: 4rem !important; /* <-- Changed from 2rem to 4rem */
+    }
+    
+    /* Make the primary buttons and accents Royal Blue */
+    div.stButton > button:first-child {
+        background-color: #2563EB; 
+        color: white;
+        border: none;
+        border-radius: 8px;
+    }
+    div.stButton > button:first-child:hover {
+        background-color: #1D4ED8;
+    }
+    
+    /* Header Layout - Locked to Left and 50% Width */
+    .header-container {
+        display: flex;
+        align-items: flex-start;
+        width: 50%;
+        min-width: 600px; /* Prevents squishing on small screens */
+        margin-bottom: 10px;
+    }
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .header-icon {
+        background-color: #EFF6FF;
+        padding: 12px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .header-title-group h1 {
+        margin: 0;
+        padding: 0;
+        color: #0F172A;
+        font-size: 34px;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+    .header-title-group h3 {
+        margin: 0;
+        padding: 0;
+        color: #2563EB;
+        font-size: 18px;
+        font-weight: 600;
+        margin-top: 4px;
+    }
+    .header-desc {
+        color: #475569;
+        font-size: 15px;
+        padding-top: 15px !important; /* Use padding instead of margin to prevent collapsing */
+        margin-bottom: 25px;
+        width: 75%; /* Constrains the description text width too */
+    }
