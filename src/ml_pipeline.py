@@ -4,8 +4,19 @@ ML Pipeline for Customer Segmentation
 Responsibilities:
 1. Load trained scaler and K-Means model
 2. Predict a single customer
-3. Predict customers from an uploaded DataFrame
+3. Predict customers from an uploaded/preprocessed DataFrame
 4. Calculate dynamic dashboard KPIs
+
+Important:
+    low_review_flag has been REMOVED.
+
+The trained ML model uses exactly these 5 features:
+
+    Recency
+    Frequency
+    Monetary
+    avg_review_score
+    review_count
 
 This module is designed to be imported by Streamlit.
 """
@@ -22,14 +33,6 @@ import pandas as pd
 # PATH CONFIGURATION
 # ============================================================
 
-# Project root:
-# dataset_training/
-# ├── models/
-# ├── data/
-# └── src/
-#
-# Since this file is inside src/, parent.parent = project root.
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 MODEL_DIR = PROJECT_ROOT / "models"
@@ -43,13 +46,15 @@ KMEANS_PATH = MODEL_DIR / "kmeans_model.pkl"
 # REQUIRED ML FEATURES
 # ============================================================
 
+# IMPORTANT:
+# low_review_flag has been intentionally removed.
+
 ML_FEATURES = [
     "Recency",
     "Frequency",
     "Monetary",
     "avg_review_score",
     "review_count",
-    "low_review_flag",
 ]
 
 
@@ -57,10 +62,8 @@ ML_FEATURES = [
 # BUSINESS SEGMENT MAPPING
 # ============================================================
 
-# K-Means cluster IDs are converted into
-# business-friendly segment names.
-
 SEGMENT_MAPPING = {
+
     1: {
         "name": "Champions / VIPs",
         "description": (
@@ -107,7 +110,7 @@ def _load_models():
         kmeans_model
 
     Raises:
-        FileNotFoundError if the .pkl files do not exist.
+        FileNotFoundError if the model files do not exist.
     """
 
     if not SCALER_PATH.exists():
@@ -129,13 +132,72 @@ def _load_models():
 
 
 # ============================================================
+# MODEL FEATURE COUNT CHECK
+# ============================================================
+
+def _validate_model_features(
+    scaler,
+    kmeans_model
+) -> None:
+    """
+    Make sure the saved scaler and K-Means model
+    were trained using exactly 5 features.
+
+    This prevents an old 6-feature model containing
+    low_review_flag from being used accidentally.
+    """
+
+    scaler_features = getattr(
+        scaler,
+        "n_features_in_",
+        None
+    )
+
+    kmeans_features = getattr(
+        kmeans_model,
+        "n_features_in_",
+        None
+    )
+
+    expected_features = len(ML_FEATURES)
+
+    if (
+        scaler_features is not None
+        and scaler_features != expected_features
+    ):
+        raise ValueError(
+            "The saved scaler was trained with "
+            f"{scaler_features} features, but this pipeline "
+            f"requires {expected_features} features.\n\n"
+            "The model must be retrained after removing "
+            "low_review_flag."
+        )
+
+    if (
+        kmeans_features is not None
+        and kmeans_features != expected_features
+    ):
+        raise ValueError(
+            "The saved K-Means model was trained with "
+            f"{kmeans_features} features, but this pipeline "
+            f"requires {expected_features} features.\n\n"
+            "The model must be retrained after removing "
+            "low_review_flag."
+        )
+
+
+# ============================================================
 # DATA VALIDATION
 # ============================================================
 
-def _validate_input_columns(df: pd.DataFrame) -> None:
+def _validate_input_columns(
+    df: pd.DataFrame
+) -> None:
     """
-    Check whether the DataFrame contains all six
-    required ML features.
+    Check whether the DataFrame contains the
+    five required ML features.
+
+    low_review_flag is NOT required.
     """
 
     missing_columns = [
@@ -145,17 +207,22 @@ def _validate_input_columns(df: pd.DataFrame) -> None:
     ]
 
     if missing_columns:
+
         raise ValueError(
             "Input data is missing required ML columns:\n"
             f"{missing_columns}\n\n"
-            f"Required columns are:\n{ML_FEATURES}"
+            f"Required ML columns are:\n{ML_FEATURES}"
         )
 
 
-def _validate_numeric_features(df: pd.DataFrame) -> None:
+def _validate_numeric_features(
+    df: pd.DataFrame
+) -> None:
     """
-    Check that all ML features contain numeric values
-    and do not contain NaN or infinite values.
+    Check that all ML features contain valid
+    numeric values.
+
+    NaN and infinite values are rejected.
     """
 
     for column in ML_FEATURES:
@@ -167,26 +234,69 @@ def _validate_numeric_features(df: pd.DataFrame) -> None:
 
         if converted.isna().any():
 
-            bad_count = converted.isna().sum()
+            bad_count = int(
+                converted.isna().sum()
+            )
 
             raise ValueError(
                 f"Column '{column}' contains "
-                f"{bad_count} missing/non-numeric value(s). "
-                "Please clean the data before prediction."
+                f"{bad_count} missing/non-numeric value(s)."
             )
 
-        if np.isinf(converted.to_numpy()).any():
+        if np.isinf(
+            converted.to_numpy()
+        ).any():
 
             raise ValueError(
-                f"Column '{column}' contains infinite values."
+                f"Column '{column}' contains "
+                "infinite values."
             )
+
+
+# ============================================================
+# PREPARE MODEL INPUT
+# ============================================================
+
+def _prepare_model_input(
+    df: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Prepare exactly the five columns expected
+    by the trained model.
+
+    Extra CSV columns are ignored by the model.
+
+    low_review_flag is intentionally ignored/removed.
+    """
+
+    _validate_input_columns(df)
+
+    model_input = df[
+        ML_FEATURES
+    ].copy()
+
+    # Convert everything to numeric
+    for column in ML_FEATURES:
+
+        model_input[column] = pd.to_numeric(
+            model_input[column],
+            errors="coerce"
+        )
+
+    _validate_numeric_features(
+        model_input
+    )
+
+    return model_input
 
 
 # ============================================================
 # SEGMENT INFORMATION
 # ============================================================
 
-def _get_segment_info(cluster_id: int) -> Dict[str, str]:
+def _get_segment_info(
+    cluster_id: int
+) -> Dict[str, str]:
     """
     Convert numeric K-Means cluster ID into
     business-friendly information.
@@ -197,11 +307,14 @@ def _get_segment_info(cluster_id: int) -> Dict[str, str]:
         return {
             "name": f"Cluster {cluster_id}",
             "description": (
-                "Cluster produced by the trained K-Means model."
+                "Cluster produced by the trained "
+                "K-Means model."
             ),
         }
 
-    return SEGMENT_MAPPING[cluster_id]
+    return SEGMENT_MAPPING[
+        cluster_id
+    ]
 
 
 # ============================================================
@@ -212,14 +325,14 @@ def predict_single_customer(
     recency: float,
     frequency: int,
     monetary: float,
-    avg_review_score: float,
-    review_count: int,
-    low_review_flag: int,
+    avg_review_score: float = 3.0,
+    review_count: int = 0,
 ) -> Dict[str, Any]:
     """
     Predict the segment for ONE customer.
 
-    This function is intended for Streamlit What-If sliders.
+    This function can be used by Streamlit
+    What-If analysis.
 
     Parameters:
         recency:
@@ -234,23 +347,38 @@ def predict_single_customer(
         avg_review_score:
             Average review score.
 
+            Default = 3.0 when review information
+            is unavailable.
+
         review_count:
             Number of reviews.
 
-        low_review_flag:
-            Binary low-review indicator.
+            Default = 0 when review information
+            is unavailable.
 
-    Returns:
-        Dictionary containing:
-            cluster_id
-            segment_name
-            description
+    IMPORTANT:
+        low_review_flag is no longer used.
     """
 
+    # --------------------------------------------------------
     # Load trained assets
+    # --------------------------------------------------------
+
     scaler, kmeans_model = _load_models()
 
+    # --------------------------------------------------------
+    # Check that the model is the new 5-feature model
+    # --------------------------------------------------------
+
+    _validate_model_features(
+        scaler,
+        kmeans_model
+    )
+
+    # --------------------------------------------------------
     # Create one customer row
+    # --------------------------------------------------------
+
     customer_df = pd.DataFrame(
         [
             {
@@ -259,30 +387,46 @@ def predict_single_customer(
                 "Monetary": monetary,
                 "avg_review_score": avg_review_score,
                 "review_count": review_count,
-                "low_review_flag": low_review_flag,
             }
         ]
     )
 
-    # Validate
-    _validate_input_columns(customer_df)
-    _validate_numeric_features(customer_df)
+    # --------------------------------------------------------
+    # Prepare exactly 5 model features
+    # --------------------------------------------------------
 
-    # IMPORTANT:
-    # Use transform(), NOT fit_transform().
-    scaled_customer = scaler.transform(
-        customer_df[ML_FEATURES]
+    model_input = _prepare_model_input(
+        customer_df
     )
 
+    # --------------------------------------------------------
+    # IMPORTANT:
+    # Use transform(), NOT fit_transform().
+    # --------------------------------------------------------
+
+    scaled_customer = scaler.transform(
+        model_input
+    )
+
+    # --------------------------------------------------------
     # Predict cluster
+    # --------------------------------------------------------
+
     prediction = kmeans_model.predict(
         scaled_customer
     )
 
-    cluster_id = int(prediction[0])
+    cluster_id = int(
+        prediction[0]
+    )
 
-    # Convert cluster into business information
-    segment_info = _get_segment_info(cluster_id)
+    # --------------------------------------------------------
+    # Convert cluster to business information
+    # --------------------------------------------------------
+
+    segment_info = _get_segment_info(
+        cluster_id
+    )
 
     return {
         "cluster_id": cluster_id,
@@ -301,27 +445,39 @@ def batch_predict_csv(
     """
     Predict customer segments for an entire DataFrame.
 
-    Required columns:
+    Expected ML columns:
 
         Recency
         Frequency
         Monetary
         avg_review_score
         review_count
-        low_review_flag
 
-    Returns:
-        Original DataFrame plus:
+    Extra columns are allowed.
+
+    The function returns the original DataFrame
+    plus:
 
         Predicted_Cluster_ID
         Segment_Name
     """
 
-    if not isinstance(input_df, pd.DataFrame):
+    # --------------------------------------------------------
+    # Basic type validation
+    # --------------------------------------------------------
+
+    if not isinstance(
+        input_df,
+        pd.DataFrame
+    ):
 
         raise TypeError(
             "input_df must be a pandas DataFrame."
         )
+
+    # --------------------------------------------------------
+    # Empty file check
+    # --------------------------------------------------------
 
     if input_df.empty:
 
@@ -329,47 +485,82 @@ def batch_predict_csv(
             "The uploaded DataFrame is empty."
         )
 
+    # --------------------------------------------------------
     # Load trained assets
+    # --------------------------------------------------------
+
     scaler, kmeans_model = _load_models()
 
-    # Validate columns
-    _validate_input_columns(input_df)
+    # --------------------------------------------------------
+    # Make sure this is the new 5-feature model
+    # --------------------------------------------------------
 
-    # Validate numeric values
-    _validate_numeric_features(input_df)
-
-    # Make a copy so original data isn't changed
-    result_df = input_df.copy()
-
-    # Scale using the trained scaler
-    scaled_data = scaler.transform(
-        result_df[ML_FEATURES]
+    _validate_model_features(
+        scaler,
+        kmeans_model
     )
 
+    # --------------------------------------------------------
+    # Prepare exactly the five model features
+    # --------------------------------------------------------
+
+    model_input = _prepare_model_input(
+        input_df
+    )
+
+    # --------------------------------------------------------
+    # Scale using the TRAINED scaler
+    # --------------------------------------------------------
+
+    scaled_data = scaler.transform(
+        model_input
+    )
+
+    # --------------------------------------------------------
     # Predict all customers
+    # --------------------------------------------------------
+
     predictions = kmeans_model.predict(
         scaled_data
     )
 
-    # Add cluster ID
-    result_df["Predicted_Cluster_ID"] = (
-        predictions.astype(int)
-    )
+    # --------------------------------------------------------
+    # Copy original data
+    # --------------------------------------------------------
 
+    result_df = input_df.copy()
+
+    # --------------------------------------------------------
+    # Add cluster ID
+    # --------------------------------------------------------
+
+    result_df[
+        "Predicted_Cluster_ID"
+    ] = predictions.astype(int)
+
+    # --------------------------------------------------------
     # Add business segment
-    result_df["Segment_Name"] = (
-        result_df["Predicted_Cluster_ID"]
-        .map(
-            {
-                cluster_id: info["name"]
-                for cluster_id, info
-                in SEGMENT_MAPPING.items()
-            }
-        )
+    # --------------------------------------------------------
+
+    segment_name_map = {
+        cluster_id: info["name"]
+        for cluster_id, info
+        in SEGMENT_MAPPING.items()
+    }
+
+    result_df[
+        "Segment_Name"
+    ] = (
+        result_df[
+            "Predicted_Cluster_ID"
+        ]
+        .map(segment_name_map)
         .fillna(
-            result_df["Predicted_Cluster_ID"]
-            .apply(
-                lambda x: f"Cluster {x}"
+            result_df[
+                "Predicted_Cluster_ID"
+            ].apply(
+                lambda x:
+                f"Cluster {x}"
             )
         )
     )
@@ -389,17 +580,29 @@ def get_dashboard_kpis(
     generated by batch_predict_csv().
 
     Returns:
+
         total_customers
         average_monetary
         segment_distribution
         segment_summary
     """
 
-    if not isinstance(predicted_df, pd.DataFrame):
+    # --------------------------------------------------------
+    # Type validation
+    # --------------------------------------------------------
+
+    if not isinstance(
+        predicted_df,
+        pd.DataFrame
+    ):
 
         raise TypeError(
             "predicted_df must be a pandas DataFrame."
         )
+
+    # --------------------------------------------------------
+    # Empty DataFrame
+    # --------------------------------------------------------
 
     if predicted_df.empty:
 
@@ -407,11 +610,17 @@ def get_dashboard_kpis(
             "Cannot calculate KPIs from an empty DataFrame."
         )
 
-    # Required columns
-    required_columns = ML_FEATURES + [
-        "Predicted_Cluster_ID",
-        "Segment_Name",
-    ]
+    # --------------------------------------------------------
+    # Required columns for KPI calculation
+    # --------------------------------------------------------
+
+    required_columns = (
+        ML_FEATURES
+        + [
+            "Predicted_Cluster_ID",
+            "Segment_Name",
+        ]
+    )
 
     missing_columns = [
         column
@@ -427,29 +636,51 @@ def get_dashboard_kpis(
             "Run batch_predict_csv() first."
         )
 
+    # --------------------------------------------------------
     # Total customers
-    total_customers = len(predicted_df)
+    # --------------------------------------------------------
 
-    # Average monetary value
-    average_monetary = float(
-        predicted_df["Monetary"].mean()
+    total_customers = len(
+        predicted_df
     )
 
+    # --------------------------------------------------------
+    # Average monetary value
+    # --------------------------------------------------------
+
+    average_monetary = float(
+        pd.to_numeric(
+            predicted_df["Monetary"],
+            errors="coerce"
+        ).mean()
+    )
+
+    # --------------------------------------------------------
     # Segment distribution
+    # --------------------------------------------------------
+
     segment_counts = (
-        predicted_df["Segment_Name"]
+        predicted_df[
+            "Segment_Name"
+        ]
         .value_counts()
     )
 
     segment_distribution = {}
 
-    for segment_name, count in segment_counts.items():
+    for (
+        segment_name,
+        count
+    ) in segment_counts.items():
 
         percentage = (
-            count / total_customers
+            count
+            / total_customers
         ) * 100
 
-        segment_distribution[segment_name] = {
+        segment_distribution[
+            segment_name
+        ] = {
             "count": int(count),
             "percentage": round(
                 float(percentage),
@@ -457,10 +688,15 @@ def get_dashboard_kpis(
             ),
         }
 
+    # --------------------------------------------------------
     # Segment-level RFM summary
+    # --------------------------------------------------------
+
     segment_summary = (
         predicted_df
-        .groupby("Segment_Name")[
+        .groupby(
+            "Segment_Name"
+        )[
             [
                 "Recency",
                 "Frequency",
@@ -472,9 +708,21 @@ def get_dashboard_kpis(
         .reset_index()
     )
 
+    # --------------------------------------------------------
+    # Return dashboard data
+    # --------------------------------------------------------
+
     return {
         "total_customers": total_customers,
-        "average_monetary": average_monetary,
-        "segment_distribution": segment_distribution,
-        "segment_summary": segment_summary,
+
+        "average_monetary": round(
+            average_monetary,
+            2
+        ),
+
+        "segment_distribution":
+            segment_distribution,
+
+        "segment_summary":
+            segment_summary,
     }
