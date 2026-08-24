@@ -47,8 +47,6 @@ ML_FEATURES = [
     "Recency",
     "Frequency",
     "Monetary",
-    "avg_review_score",
-    "review_count",
 ]
 
 
@@ -69,14 +67,13 @@ SEGMENT_MAPPING = {
     },
 
     3: {
-        "name": "One-Time Customers",
+        "name": "Promising Customers",
         "description": (
-            "Recent customers with limited purchase history "
-            "and strong review signals."
+            "Promising buyers showing early signs of engagement, not yet loyal."
         ),
     },
 
-    1: {
+    0: {
         "name": "At-Risk Customers",
         "description": (
             "Customers showing signs of disengagement "
@@ -84,10 +81,10 @@ SEGMENT_MAPPING = {
         ),
     },
 
-    0: {
+    1: {
         "name": "Churned/Lost Customers",
         "description": (
-            "Dormant customers with very low recent engagement."
+            "Long-inactive customers unlikely to return without a strong win-back push."
         ),
     },
 }
@@ -207,82 +204,33 @@ def _get_segment_info(cluster_id: int) -> Dict[str, str]:
 # 1. SINGLE CUSTOMER INFERENCE
 # ============================================================
 
+# ============================================================
+# 1. SINGLE CUSTOMER INFERENCE
+# ============================================================
+
 def predict_single_customer(
     recency: float,
     frequency: int,
-    monetary: float,
-    avg_review_score: float,
-    review_count: int,
+    monetary: float
 ) -> Dict[str, Any]:
     """
     Predict the segment for ONE customer.
-
-    This function is intended for Streamlit What-If sliders.
-
-    Parameters:
-        recency:
-            Days since customer's last order.
-
-        frequency:
-            Number of orders.
-
-        monetary:
-            Customer spending/value.
-
-        avg_review_score:
-            Average review score.
-
-        review_count:
-            Number of reviews.
-
-
-    Returns:
-        Dictionary containing:
-            cluster_id
-            segment_name
-            description
     """
-
-    # Load trained assets
     scaler, kmeans_model = _load_models()
 
-    # Create one customer row
-    customer_df = pd.DataFrame(
-        [
-            {
-                "Recency": recency,
-                "Frequency": frequency,
-                "Monetary": monetary,
-                "avg_review_score": avg_review_score,
-                "review_count": review_count,
-            }
-        ]
-    )
+    customer_df = pd.DataFrame([{
+        "Recency": recency,
+        "Frequency": frequency,
+        "Monetary": monetary
+    }])
 
-    # Validate
-    _validate_input_columns(customer_df)
-    _validate_numeric_features(customer_df)
+    # Use the scaler's own recorded column order — avoids any hardcoding mismatch
+    expected_columns = scaler.feature_names_in_
+    scaled_array = scaler.transform(customer_df[expected_columns])
+    scaled_customer = pd.DataFrame(scaled_array, columns=expected_columns)
 
-    # IMPORTANT:
-    # Use transform(), NOT fit_transform().
-    scaled_array = scaler.transform(
-        customer_df[ML_FEATURES]
-    )
-
-    # Wrap it back into a DataFrame to silence the warning
-    scaled_customer = pd.DataFrame(
-        scaled_array, 
-        columns=ML_FEATURES
-    )
-
-    # Predict cluster
-    prediction = kmeans_model.predict(
-        scaled_customer
-    )
-
+    prediction = kmeans_model.predict(scaled_customer)
     cluster_id = int(prediction[0])
-
-    # Convert cluster into business information
     segment_info = _get_segment_info(cluster_id)
 
     return {

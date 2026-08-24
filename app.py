@@ -151,11 +151,14 @@ if not st.session_state.full_screen:
                 c1, c2 = st.columns(2)
                 with c1:
                     recency = st.number_input("Average Recency (Days)", min_value=0, max_value=1000, value=25)
-                    monetary = st.number_input("Average Total Spend ($)", min_value=0.0, max_value=10000.0, value=350.0, step=10.0)
-                    review_count = st.number_input("Average Review Count", min_value=0, max_value=20, value=2)
+                    monetary = st.number_input("Average Total Spend", min_value=1000.0, max_value=100000.0, value=1000.0, step=500.0)
                 with c2:
-                    frequency = st.number_input("Average Frequency (Orders)", min_value=1, max_value=50, value=3)
-                    review_score = st.slider("Average Review Score", min_value=1.0, max_value=5.0, value=4.5, step=0.1)
+                    frequency = st.number_input("Average Frequency (Orders)", min_value=1, max_value=200, value=3)
+                    # Swapped out Review Score for Price Sensitivity
+                    price_sensitivity = st.selectbox(
+                        "Price Sensitivity",
+                        options=["Full Price Consumers", "Bargain Hunters", "Seasonal Shoppers"]
+                    )
                 
                 predict_btn = st.form_submit_button("🔍 Analyze Segment Metrics",key="analyze_btn", use_container_width=True)
 
@@ -181,7 +184,8 @@ if predict_btn:
         time.sleep(0.4) 
         
         try:
-            pred = predict_single_customer(recency, frequency, monetary, review_score, review_count)
+            # 1. Removed review_score; passing pure RFM to the ML backend
+            pred = predict_single_customer(recency, frequency, monetary)
             
             if "Champions" in pred["segment_name"]: badge_color = "green"
             elif "Risk" in pred["segment_name"]: badge_color = "red"
@@ -190,14 +194,18 @@ if predict_btn:
 
             st.session_state.current_segment = pred["segment_name"]
             st.session_state.top_category = top_cat if top_cat.strip() != "" else "General Merchandise"
+            
+            # 2. Saving the new dropdown value to session state for LLM injection
+            st.session_state.price_sensitivity = price_sensitivity
+            
             st.session_state.segment_desc = pred["description"]
             st.session_state.badge_color = badge_color
             st.session_state.chat_history = [] 
             
-            st.write("Generating initial AI strategy overview...")
+            st.write("Crafting your AI-powered campaign approach...")
             initial_prompt = "Provide a brief, high-level overview of exactly how we should market to this specific segment."
             _, st.session_state.chat_history = generate_action_response(
-                st.session_state.chat_history, st.session_state.current_segment, st.session_state.top_category, initial_prompt
+                st.session_state.chat_history, st.session_state.current_segment, st.session_state.top_category, st.session_state.price_sensitivity,initial_prompt
             )
             
             # HIDDEN FLAG: Hide the automated initial prompt from the UI
@@ -338,7 +346,9 @@ if st.session_state.current_segment:
         with st.chat_message("assistant"):
             with st.status(action_text, expanded=True) as status:
                 _, st.session_state.chat_history = generate_action_response(
-                    st.session_state.chat_history, st.session_state.current_segment, st.session_state.top_category, prompt
+                    st.session_state.chat_history, st.session_state.current_segment, st.session_state.top_category, 
+                    st.session_state.get("price_sensitivity", "Full Price Consumers"),
+                    prompt
                 )
 
                 status.update(label="Complete!", state="complete", expanded=False)
