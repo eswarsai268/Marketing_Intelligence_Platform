@@ -181,7 +181,7 @@ if predict_btn:
         time.sleep(0.4) 
         
         try:
-            pred = predict_single_customer(recency, frequency, monetary, review_score, review_count, 0)
+            pred = predict_single_customer(recency, frequency, monetary, review_score, review_count)
             
             if "Champions" in pred["segment_name"]: badge_color = "green"
             elif "Risk" in pred["segment_name"]: badge_color = "red"
