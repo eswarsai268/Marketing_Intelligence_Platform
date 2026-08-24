@@ -58,3 +58,132 @@
         margin-bottom: 25px;
         width: 75%; /* Constrains the description text width too */
     }
+    .ai-avengers-logo {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    animation: logoGlow 2s infinite ease-in-out;
+}
+
+@keyframes logoGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 3px #2563EB);
+    }
+
+    50% {
+        filter:
+            drop-shadow(0 0 8px #60A5FA)
+            drop-shadow(0 0 16px #3B82F6)
+            drop-shadow(0 0 25px #93C5FD);
+    }
+}
+  .ai-title {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: "Arial Black", sans-serif;
+    font-size: 34px !important;
+    font-weight: 900 !important;
+    letter-spacing: 1px;
+    color: #2563EB !important;
+    line-height: 1.05 !important;
+}
+.lightning {
+    display: inline-block;
+    color: #2563EB;
+    font-size: 40px;
+    margin-right: 5px;
+    animation: electricFlash 1.8s infinite;
+}
+
+@keyframes electricFlash {
+    0%, 70%, 100% {
+        color: #1E3A8A;
+        filter: drop-shadow(0 0 0 transparent);
+        transform: scale(1);
+    }
+
+    73% {
+        color: #60A5FA;
+        filter:
+            drop-shadow(0 0 6px #60A5FA)
+            drop-shadow(0 0 14px #93C5FD);
+        transform: scale(1.12);
+    }
+
+    76% {
+        color: #DBEAFE;
+        filter:
+            drop-shadow(0 0 10px #60A5FA)
+            drop-shadow(0 0 22px #93C5FD);
+        transform: scale(1.2);
+    }
+
+    79% {
+        color: #2563EB;
+        filter: drop-shadow(0 0 3px #60A5FA);
+        transform: scale(1);
+    }
+}
+        
+        
+
+.ai-subtitle {
+    margin: 4px 0 0 0 !important;
+    padding: 0 !important;
+    font-family: "Trebuchet MS", sans-serif;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+
+    /* Lightning text effect */
+    background: linear-gradient(
+        90deg,
+        #1E3A8A 0%,
+        #2563EB 35%,
+        #DBEAFE 50%,
+        #2563EB 65%,
+        #1E3A8A 100%
+    );
+
+    background-size: 200% auto;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent !important;
+
+    animation: lightningText 2.5s linear infinite;
+}
+
+@keyframes lightningText {
+    0% {
+        background-position: 200% center;
+    }
+
+    100% {
+        background-position: -200% center;
+    }
+}
+.project-intro {
+    text-align: center;
+    margin: 20px auto 35px auto;
+    width: 85%;
+}
+
+.project-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #0F172A;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+}
+
+.project-description {
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.6;
+    color: #475569;
+    max-width: 1000px;
+    margin: 0 auto;
+}

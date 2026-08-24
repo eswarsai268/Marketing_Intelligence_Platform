@@ -13,7 +13,7 @@ st.set_page_config(
     page_icon="🎯",
     layout="wide"
 )
-require_login()
+#require_login()
 
 # Initialize Session State for Chat Memory & Context
 if "chat_history" not in st.session_state:
@@ -27,29 +27,71 @@ if "top_category" not in st.session_state:
 with open("style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
+
 # ==========================================
-# 2. HEADER (DYNAMIC LAYOUT WITH SVG)
+# 2. HEADER
 # ==========================================
-st.markdown("""
-    <div class="header-container">
-        <div class="header-left">
-            <div class="header-icon">
-                <!-- Professional Inline SVG Icon -->
-                <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="#2563EB">
-                    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-                </svg>
-            </div>
-            <div class="header-title-group">
-                <h1>Customer Segmentation</h1>
-                <h3>& Personalized Marketing Intelligence Platform</h3>
-            </div>
-        </div>
-    </div>
-    <div class="header-desc">
-        Predict customer segments based on behavioral data to unlock personalized insights and determine the exact marketing approach for each specific group.
-    </div>
-    <hr style="margin-top: 0px; margin-bottom: 30px; border: 0; border-top: 1px solid #E2E8F0;">
-""", unsafe_allow_html=True)
+
+from pathlib import Path
+import base64
+   # st.image("AIAVENGERS.png.jpeg", width=70)
+image_path = Path(__file__).parent / "AIAVENGERS.png.jpeg"
+
+image_data = base64.b64encode(image_path.read_bytes()).decode()
+
+header_col1, header_col2 = st.columns([0.12, 0.88])
+
+with header_col1:
+    st.markdown(
+        f"""
+        <img src="data:image/jpeg;base64,{image_data}"
+             class="ai-avengers-logo">
+        """,
+        unsafe_allow_html=True
+    )
+
+with header_col2:
+    st.markdown(
+        """
+        <h1 class="ai-title">
+            <span class="lightning">⚡</span> Smart Customer Segmentation
+
+        </h1>
+        <h3 class="ai-subtitle">
+            “Segment Smarter. Market Better.” <span class="lightning">⚡</span>
+        </h3>
+        """,
+        unsafe_allow_html=True
+    )
+st.markdown(
+    """
+    <h2 style="text-align:center; color:#0F172A; margin-bottom:10px;">
+        Customer Segmentation &amp; Personalized Marketing Intelligence
+    </h2>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    """
+    <p style="
+        text-align:center;
+        color:#475569;
+        font-size:18px;
+        font-weight:500;
+        line-height:1.6;
+        max-width:1000px;
+        margin:0 auto 35px auto;
+    ">
+        Predict customer segments based on behavioral data to unlock
+        personalized insights and determine the exact marketing approach
+        for each specific group.
+    </p>
+    """,
+    unsafe_allow_html=True
+)  
+
+
 
 # ==========================================
 # 3. TWO-COLUMN LAYOUT
