@@ -3,14 +3,16 @@
         padding-top: 4rem !important; /* <-- Changed from 2rem to 4rem */
     }
     
-    /* Make the primary buttons and accents Royal Blue */
-    div.stButton > button:first-child {
+        /* Royal Blue nav buttons */
+    .st-key-back_btn button,
+    .st-key-fullscreen_btn button {
         background-color: #2563EB; 
         color: white;
         border: none;
         border-radius: 8px;
     }
-    div.stButton > button:first-child:hover {
+    .st-key-back_btn button:hover,
+    .st-key-fullscreen_btn button:hover {
         background-color: #1D4ED8;
     }
     
@@ -58,3 +60,100 @@
         margin-bottom: 25px;
         width: 75%; /* Constrains the description text width too */
     }
+
+    /* 1. Main Banner Image */
+    .st-key-cohort_banner > div > div[data-testid="stHorizontalBlock"] {
+        background: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.90)), 
+                    url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQf4G4m18qGuMkc5rMV_swVe92diiNcpRJNjttOVg7UTVP-DEv257hA2zw&s=10');
+        background-size: cover;
+        background-position: center;
+        border-radius: 12px;
+        padding: 40px 30px;
+        border: 1px solid #334155;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+    
+    .st-key-cohort_banner p, 
+    .st-key-cohort_banner label,
+    .st-key-cohort_banner .stMarkdown {
+        color: #F8FAFC !important;
+    }
+    
+    /* 2. Solid Dark Form Background */
+    .st-key-customer_input_form { 
+        background-color: rgba(30, 41, 59, 0.7) !important;
+        border: 1px solid #334155 !important;
+        border-radius: 12px !important;
+        padding: 25px !important;
+    }
+    
+    /* 3. Button Fixes */
+    .st-key-analyze_btn button {
+        background-color: #FFFFFF !important;
+        border: 1px solid #FFFFFF !important;
+    }
+    .st-key-analyze_btn button * {
+        color: #000000 !important;
+        -webkit-text-fill-color: #000000 !important;
+        font-weight: 700 !important;
+        transition: color 0.2s ease;
+    }
+    .st-key-analyze_btn button:hover {
+        background-color: #0F172A !important;
+        border: 1px solid #38BDF8 !important;
+    }
+    .st-key-analyze_btn button:hover * {
+        color: #38BDF8 !important;
+        -webkit-text-fill-color: #38BDF8 !important;
+    }
+    
+    /* 4. Hide "Please enter to submit form" */
+    div[data-testid="InputInstructions"] {
+        display: none !important;
+    }
+
+    /* 5. Action button colors — matched to caption cards below them */
+    .st-key-email_btn button {
+        background-color: rgba(220, 38, 38, 0.75) !important;
+        border: 1px solid #DC2626 !important;
+    }
+    .st-key-email_btn button p { color: #FFFFFF !important; font-weight: 600 !important; }
+    .st-key-email_btn button:hover { background-color: rgba(220, 38, 38, 0.9) !important; }
+
+    .st-key-ad_btn button {
+        background-color: rgba(217, 119, 6, 0.75) !important;
+        border: 1px solid #D97706 !important;
+    }
+    .st-key-ad_btn button p { color: #FFFFFF !important; font-weight: 600 !important; }
+    .st-key-ad_btn button:hover { background-color: rgba(217, 119, 6, 0.9) !important; }
+
+    .st-key-strategy_btn button {
+        background-color: rgba(30, 64, 175, 0.75) !important;
+        border: 1px solid #1E40AF !important;
+    }
+    .st-key-strategy_btn button p { color: #FFFFFF !important; font-weight: 600 !important; }
+    .st-key-strategy_btn button:hover { background-color: rgba(30, 64, 175, 0.9) !important; }
+
+    /* 6. USER CHAT BUBBLE CUSTOMIZATION */
+    /* Target the User Message Container, reverse the layout (icon on right), and apply light blue */
+    div[data-testid="stChatMessage"]:has(div[data-testid="stChatMessageAvatarUser"]),
+    div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-user"]) {
+        flex-direction: row-reverse;
+        background-color: #E0F2FE !important; /* Light Blue */
+        border-radius: 12px;
+        padding: 15px;
+        margin-left: auto; /* Pushes bubble to the right */
+        margin-bottom: 15px;
+        width: 80%;
+        border: 1px solid #BAE6FD;
+    }
+    /* Force text inside the User Bubble to be dark */
+    div[data-testid="stChatMessage"]:has(div[data-testid="stChatMessageAvatarUser"]) *,
+    div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-user"]) * {
+        color: #0F172A !important;
+    }
+    /* 6. Margin above the chat workspace */
+    .st-key-campaign_chat_box {
+        margin-top: 20px;
+    }
+    

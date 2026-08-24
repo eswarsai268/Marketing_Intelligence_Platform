@@ -49,7 +49,6 @@ ML_FEATURES = [
     "Monetary",
     "avg_review_score",
     "review_count",
-    "low_review_flag",
 ]
 
 
@@ -61,24 +60,24 @@ ML_FEATURES = [
 # business-friendly segment names.
 
 SEGMENT_MAPPING = {
-    1: {
-        "name": "Champions / VIPs",
+    2: {
+        "name": "High-Value Customers",
         "description": (
             "High-spending, frequent repeat customers "
             "with strong engagement."
         ),
     },
 
-    2: {
-        "name": "Recent One-Timers",
+    3: {
+        "name": "One-Time Customers",
         "description": (
             "Recent customers with limited purchase history "
             "and strong review signals."
         ),
     },
 
-    3: {
-        "name": "At-Risk / Dissatisfied",
+    1: {
+        "name": "At-Risk Customers",
         "description": (
             "Customers showing signs of disengagement "
             "or poor experience."
@@ -86,7 +85,7 @@ SEGMENT_MAPPING = {
     },
 
     0: {
-        "name": "Churned / Lost",
+        "name": "Churned/Lost Customers",
         "description": (
             "Dormant customers with very low recent engagement."
         ),

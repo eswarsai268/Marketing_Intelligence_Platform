@@ -4,6 +4,76 @@ import time
 from src.ml_pipeline import predict_single_customer
 from src.llm_agent import generate_action_response
 
+def stream_text(text):
+    """Takes fully generated text and visually streams it word-by-word."""
+    for word in text.split(" "):
+        yield word + " "
+        time.sleep(0.03) # Speed of the typing effect
+
+def scroll_to_bottom():
+    st.html("""
+        <script>
+            (function() {
+                function scrollEl(el, tag) {
+                    if (!el) { console.log('[scroll-debug] ' + tag + ': element not found'); return; }
+                    console.log('[scroll-debug] ' + tag + ': scrollHeight=' + el.scrollHeight + ' clientHeight=' + el.clientHeight + ' scrollTop(before)=' + el.scrollTop);
+                    try {
+                        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+                        console.log('[scroll-debug] ' + tag + ': scrollTo called, scrollTop(after)=' + el.scrollTop);
+                    } catch (e) {
+                        console.log('[scroll-debug] ' + tag + ': scrollTo threw, falling back. Error: ' + e);
+                        el.scrollTop = el.scrollHeight;
+                    }
+                }
+
+                function findScrollable() {
+                    var container = document.querySelector('.st-key-campaign_chat_box');
+                    console.log('[scroll-debug] container found: ' + (container ? 'yes' : 'NO'));
+                    if (!container) return null;
+                    if (container.scrollHeight > container.clientHeight) {
+                        console.log('[scroll-debug] container itself is scrollable');
+                        return container;
+                    }
+                    var descendants = container.querySelectorAll('*');
+                    console.log('[scroll-debug] checking ' + descendants.length + ' descendants for overflow');
+                    for (var i = 0; i < descendants.length; i++) {
+                        if (descendants[i].scrollHeight > descendants[i].clientHeight) {
+                            console.log('[scroll-debug] found scrollable descendant: ' + descendants[i].tagName + '.' + descendants[i].className);
+                            return descendants[i];
+                        }
+                    }
+                    console.log('[scroll-debug] no scrollable descendant found, using container as fallback');
+                    return container;
+                }
+
+                console.log('[scroll-debug] scroll_to_bottom() invoked at ' + Date.now());
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() {
+                        scrollEl(findScrollable(), 'main-call');
+                    });
+                });
+            })();
+        </script>
+    """, unsafe_allow_javascript=True)
+
+def preserve_scroll():
+    st.html("""
+        <script>
+            (function() {
+                var mainEl = document.querySelector('section[data-testid="stMain"]');
+                if (mainEl) {
+                    var saved = sessionStorage.getItem('scrollPos');
+                    if (saved !== null) { mainEl.scrollTop = parseInt(saved); }
+                    mainEl.addEventListener('scroll', function() {
+                        sessionStorage.setItem('scrollPos', mainEl.scrollTop);
+                    });
+                }
+            })();
+        </script>
+    """, unsafe_allow_javascript=True)
+
+preserve_scroll()
+
 # ==========================================
 # 1. PAGE SETUP & CONFIGURATION
 # ==========================================
@@ -13,173 +83,274 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize Session State for Chat Memory & Context
+# Initialize Session State
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "current_segment" not in st.session_state:
     st.session_state.current_segment = None
 if "top_category" not in st.session_state:
     st.session_state.top_category = None
+if "stream_latest" not in st.session_state:
+    st.session_state.stream_latest = False
+if "full_screen" not in st.session_state:
+    st.session_state.full_screen = False
+if "scroll_pending" not in st.session_state:
+    st.session_state.scroll_pending = False
 
 # Load external CSS
 with open("style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # ==========================================
-# 2. HEADER (DYNAMIC LAYOUT WITH SVG)
+# 2. HEADER
 # ==========================================
-st.markdown("""
-    <div class="header-container">
-        <div class="header-left">
-            <div class="header-icon">
-                <!-- Professional Inline SVG Icon -->
-                <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="#2563EB">
-                    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-                </svg>
-            </div>
-            <div class="header-title-group">
-                <h1>Customer Segmentation</h1>
-                <h3>& Personalized Marketing Intelligence Platform</h3>
+if not st.session_state.full_screen:
+    st.markdown("""
+        <div class="header-container">
+            <div class="header-left">
+                <div class="header-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="#2563EB">
+                        <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                    </svg>
+                </div>
+                <div class="header-title-group">
+                    <h1>Customer Segmentation</h1>
+                    <h3>& Personalized Marketing Intelligence Platform</h3>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="header-desc">
-        Predict customer segments based on behavioral data to unlock personalized insights and determine the exact marketing approach for each specific group.
-    </div>
-    <hr style="margin-top: 0px; margin-bottom: 30px; border: 0; border-top: 1px solid #E2E8F0;">
+        <div class="header-desc">
+            Predict customer segments based on behavioral data to unlock personalized insights and determine the exact marketing approach for each specific group.
+        </div>
+        <hr style="margin-top: 0px; margin-bottom: 30px; border: 0; border-top: 1px solid #E2E8F0;">
+    """, unsafe_allow_html=True)
+
+st.markdown("""
+    <style>
+    </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. TWO-COLUMN LAYOUT
+# 3. BLOCK 1: INPUT BANNER
 # ==========================================
-col_left, col_right = st.columns([1, 1.4], gap="large")
+predict_btn = False
+if not st.session_state.full_screen:
+    with st.container(key="cohort_banner"):
+        banner_left, banner_right = st.columns([1.2, 1], gap="large")
 
-# --- LEFT COLUMN: INPUT PARAMETERS ---
-with col_left:
-    st.subheader("1. Customer Profile Input")
-    st.write("Provide customer engagement metrics to classify their segment:")
-    
-    with st.form("customer_input_form"):
-        top_cat = st.text_input(
-            "Top Product Category",
-            placeholder="e.g., Wireless Earbuds, Coffee Beans",
-            help="Type the main product this customer buys. The AI will use this to write targeted copy."
-        )
+        with banner_left:
+            st.markdown("<h3 style='color: #38BDF8; margin-top: -10px;'>Segment Profile Input</h3>", unsafe_allow_html=True)
+            st.write("Provide the **average engagement metrics** for this customer segment:")
         
-        c1, c2 = st.columns(2)
-        with c1:
-            recency = st.number_input("Recency (Days since last order)", min_value=0, max_value=1000, value=25)
-            monetary = st.number_input("Total Spend ($)", min_value=0.0, max_value=10000.0, value=350.0, step=10.0)
-            review_count = st.number_input("Review Count", min_value=0, max_value=20, value=2)
-        with c2:
-            frequency = st.number_input("Frequency (Total Orders)", min_value=1, max_value=50, value=3)
-            review_score = st.slider("Average Review Score", min_value=1.0, max_value=5.0, value=4.5, step=0.1)
-            # Removed low_review_flag from the UI to make it universally adaptable!
-            
-        predict_btn = st.form_submit_button("🔍 Predict Customer Segment", use_container_width=True)
-
-    if predict_btn:
-        with st.spinner("Classifying customer via ML..."):
-            time.sleep(0.4) 
-            
-            try:
-                # 1. Call the ML pipeline
-                pred = predict_single_customer(
-                    recency, frequency, monetary, review_score, review_count, 0
+            with st.form("customer_input_form"):
+                top_cat = st.text_input(
+                    "Primary Product Category",
+                    placeholder="e.g., Wireless Earbuds, Coffee Beans"
                 )
+            
+                c1, c2 = st.columns(2)
+                with c1:
+                    recency = st.number_input("Average Recency (Days)", min_value=0, max_value=1000, value=25)
+                    monetary = st.number_input("Average Total Spend ($)", min_value=0.0, max_value=10000.0, value=350.0, step=10.0)
+                    review_count = st.number_input("Average Review Count", min_value=0, max_value=20, value=2)
+                with c2:
+                    frequency = st.number_input("Average Frequency (Orders)", min_value=1, max_value=50, value=3)
+                    review_score = st.slider("Average Review Score", min_value=1.0, max_value=5.0, value=4.5, step=0.1)
                 
-                # 2. Map the UI colors
-                if "Champions" in pred["segment_name"]:
-                    badge_color = "green"
-                elif "Risk" in pred["segment_name"]:
-                    badge_color = "red"
-                elif "Churned" in pred["segment_name"]:
-                    badge_color = "gray"
-                else:
-                    badge_color = "blue"
+                predict_btn = st.form_submit_button("🔍 Analyze Segment Metrics",key="analyze_btn", use_container_width=True)
 
-                # 3. Save everything to session state
-                st.session_state.current_segment = pred["segment_name"]
-                st.session_state.top_category = top_cat if top_cat.strip() != "" else "General Merchandise"
-                st.session_state.segment_desc = pred["description"]
-                st.session_state.badge_color = badge_color
-                st.session_state.chat_history = [] 
-                
-                # --- NEW: THE AUTO-TRIGGERED LLM RESPONSE ---
-                with st.spinner("Generating initial AI strategy overview..."):
-                    initial_prompt = "Provide a brief, high-level overview of exactly how we should market to this specific segment."
-                    _, st.session_state.chat_history = generate_action_response(
-                        st.session_state.chat_history, 
-                        st.session_state.current_segment, 
-                        st.session_state.top_category, 
-                        initial_prompt
-                    )
-                
-            except Exception as e:
-                st.error(f"Backend Error: {e}")
+        with banner_right:
+            st.markdown("""
+                <div style="padding-top: 20px;">
+                    <h1 style="color: #38BDF8; margin-bottom: 15px; font-family: sans-serif; letter-spacing: 3px;">Segment-Level Intelligence</h1>
+                    <p style="font-size: 1.05em; line-height: 1.6; color: #CBD5E1; margin-bottom: 20px;">
+                        Provide average customer behavior metrics to instantly identify their segment and get an AI-crafted marketing approach built specifically for that group.
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
 
-    # Display Active Classification Status
-    if st.session_state.current_segment:
-        st.success(f"**Identified Segment:** {st.session_state.current_segment}")
-        st.info(f"**Category:** `{st.session_state.top_category}` | {st.session_state.segment_desc}")
+# ==========================================
+# 4. BLOCK 2: CENTRILIZED PROCESSING & CHAT 
+# ==========================================
 
-# --- RIGHT COLUMN: CAMPAIGN GENERATOR & CHAT ---
-with col_right:
-    st.subheader("2. Actionable Campaign Intelligence")
-    
-    if not st.session_state.current_segment:
-        st.info("👈 Enter customer details and click **'Predict Customer Segment'** to unlock tailored campaigns.")
-    else:
-        st.write("Generate tailored marketing collateral:")
+# 1. Centered Loading Animation 
+if predict_btn:
+    st.markdown("<br>", unsafe_allow_html=True)
+    with st.status("🧠 Processing Segment Intelligence...", expanded=True) as status:
+        st.write("Classifying segment via ML Matrix...")
+        time.sleep(0.4) 
         
-        # Action Buttons (Now wired to the LLM agent!)
+        try:
+            pred = predict_single_customer(recency, frequency, monetary, review_score, review_count, 0)
+            
+            if "Champions" in pred["segment_name"]: badge_color = "green"
+            elif "Risk" in pred["segment_name"]: badge_color = "red"
+            elif "Churned" in pred["segment_name"]: badge_color = "gray"
+            else: badge_color = "blue"
+
+            st.session_state.current_segment = pred["segment_name"]
+            st.session_state.top_category = top_cat if top_cat.strip() != "" else "General Merchandise"
+            st.session_state.segment_desc = pred["description"]
+            st.session_state.badge_color = badge_color
+            st.session_state.chat_history = [] 
+            
+            st.write("Generating initial AI strategy overview...")
+            initial_prompt = "Provide a brief, high-level overview of exactly how we should market to this specific segment."
+            _, st.session_state.chat_history = generate_action_response(
+                st.session_state.chat_history, st.session_state.current_segment, st.session_state.top_category, initial_prompt
+            )
+            
+            # HIDDEN FLAG: Hide the automated initial prompt from the UI
+            st.session_state.chat_history[-2]["hidden"] = True
+            
+            st.session_state.stream_latest = True 
+            status.update(label="Analysis Complete!", state="complete", expanded=False)
+            
+        except Exception as e:
+            status.update(label="Analysis Failed", state="error", expanded=False)
+            st.error(f"Backend Error: {e}")
+
+# 2. Full Width Content Layout
+if st.session_state.current_segment:
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ---> HIDE THESE BLOCKS IN FULL SCREEN <---
+    if not st.session_state.full_screen:
+        st.markdown(f"""
+            <div style="background-color: #ECFDF5; border: 1px solid #6EE7B7; border-radius: 10px; padding: 16px 20px; margin-bottom: 10px;">
+                <span style="color: #065F46; font-size: 0.95em; font-weight: 500;">Segment Match</span><br>
+                <span style="color: #047857; font-size: 1.8em; font-weight: 800; letter-spacing: 0.5px;">{st.session_state.current_segment}</span>
+            </div>
+        """, unsafe_allow_html=True)
+    
+        st.markdown(f"""
+            <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 14px 20px; margin-bottom: 10px;">
+                <span style="color: #1E40AF; font-weight: 600;">Category:</span>
+                <code>{st.session_state.top_category}</code> | {st.session_state.segment_desc}
+            </div>
+        """, unsafe_allow_html=True)
+    
+        st.markdown("---")
+
+    # Wrap buttons in a scoped container to color-code them individually
+    with st.container(key="action_container"):
+        
+        # ⛶ FULL SCREEN NAV BAR
+        nav_c1, nav_c2 = st.columns([5, 1])
+        with nav_c1:
+            if st.session_state.full_screen:
+                if st.button("⬅️ Back to Dashboard",key="back_btn" ,use_container_width=False):
+                    st.session_state.full_screen = False
+                    st.rerun()
+        with nav_c2:
+            if not st.session_state.full_screen:
+                if st.button("⛶ Full Screen",key="fullscreen_btn", use_container_width=True):
+                    st.session_state.full_screen = True
+                    st.rerun()
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # ACTION BUTTONS (NOW ACTING AS STATE TRIGGERS)
         btn_c1, btn_c2, btn_c3 = st.columns(3)
+        
         with btn_c1:
-            if st.button("📧 Email Template", use_container_width=True):
-                with st.spinner("Generating email copy..."):
-                    prompt = "Write a high-converting marketing email template (with a subject line) for this segment. Give them a compelling reason to buy again today."
-                    _, st.session_state.chat_history = generate_action_response(
-                        st.session_state.chat_history, st.session_state.current_segment, st.session_state.top_category, prompt
-                    )
-                    st.rerun() # Refreshes the UI instantly to show the chat
+            if st.button("📧 Email Draft", key="email_btn", use_container_width=True):
+                st.session_state.pending_prompt = "Write a high-converting marketing email template (with a subject line) for this segment. Give them a compelling reason to buy again today."
+                st.session_state.pending_action = "Drafting Email Campaign..."
+                st.rerun()
+            
+            st.markdown("""
+                <div style="background-color: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 12px; text-align: center; margin-top: 5px;">
+                    <span style="color: #991B1B; font-size: 0.85em; font-weight: 500;">Direct-response template for immediate conversions.</span>
+                </div>
+            """, unsafe_allow_html=True)
                     
         with btn_c2:
-            if st.button("📢 Ad Copy", use_container_width=True):
-                with st.spinner("Drafting ad campaign..."):
-                    prompt = "Draft short, punchy Facebook/Instagram Ad copy for this segment. Include a Headline, Body Text, and CTA."
-                    _, st.session_state.chat_history = generate_action_response(
-                        st.session_state.chat_history, st.session_state.current_segment, st.session_state.top_category, prompt
-                    )
-                    st.rerun()
+            if st.button("📢 Social Ad Copy", key="ad_btn", use_container_width=True):
+                st.session_state.pending_prompt = "Draft short, punchy Facebook/Instagram Ad copy for this segment. Include a Headline, Body Text, and CTA."
+                st.session_state.pending_action = "Drafting Ad Campaign..."
+                st.rerun()
+            
+            st.markdown("""
+                <div style="background-color: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 12px; text-align: center; margin-top: 5px;">
+                    <span style="color: #92400E; font-size: 0.85em; font-weight: 500;">Scroll-stopping social media ad creative.</span>
+                </div>
+            """, unsafe_allow_html=True)
                     
         with btn_c3:
-            if st.button("🎯 Strategy Brief", use_container_width=True):
-                with st.spinner("Building strategy..."):
-                    prompt = "Provide a detailed, bulleted 3-step retention strategy and follow-up sequence for this segment."
-                    _, st.session_state.chat_history = generate_action_response(
-                        st.session_state.chat_history, st.session_state.current_segment, st.session_state.top_category, prompt
-                    )
-                    st.rerun()
-                    
-        st.markdown("---")
-        
-        # Chat & Output History Display
-        st.write("**Campaign Workspace & Conversational Refinement:**")
-        chat_box = st.container(height=320)
-        with chat_box:
-            if len(st.session_state.chat_history) == 0:
-                st.caption("Click a campaign button above or type below to start drafting.")
+            if st.button("🎯 Retention Strategy", key="strategy_btn", use_container_width=True):
+                st.session_state.pending_prompt = "Provide a detailed, bulleted 3-step retention strategy and follow-up sequence for this segment."
+                st.session_state.pending_action = "Building Strategy..."
+                st.rerun()
             
-            # Loop through history, but skip the hidden "system" prompts
-            for msg in st.session_state.chat_history:
-                if msg["role"] != "system":
-                    with st.chat_message(msg["role"]):
-                        st.markdown(msg["content"])
-                    
-        # Chat Input Box for Revisions
-        if prompt := st.chat_input("Refine this campaign (e.g., 'Make it more urgent', 'Add a 20% discount')..."):
-            with st.spinner("Refining..."):
+            st.markdown("""
+                <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 12px; text-align: center; margin-top: 5px;">
+                    <span style="color: #1E40AF; font-size: 0.85em; font-weight: 500;">Step-by-step engagement and retention plan.</span>
+                </div>
+            """, unsafe_allow_html=True)
+    
+    # ==========================================
+    # 5. INTELLIGENT CHAT ENGINE
+    # ==========================================
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Chat box always has a fixed scroll height — taller in fullscreen since it's the main content there
+    chat_height = 650 if st.session_state.full_screen else 500
+    chat_box = st.container(height=chat_height, key="campaign_chat_box")
+    
+    with chat_box:
+        if len(st.session_state.chat_history) == 0:
+            st.caption("Click a campaign button above or use the custom prompt menu to start drafting.")
+        
+        # Render past history
+        for msg in st.session_state.chat_history:
+            if msg["role"] == "system" or msg.get("hidden", False):
+                continue
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+    if st.session_state.scroll_pending:
+        scroll_to_bottom()
+        st.session_state.scroll_pending = False
+
+        # PROMPT INPUT (Pins to the bottom of the screen, outside the container)
+    chat_prompt = st.chat_input("Refine this campaign (e.g., 'Make it more urgent', 'Add a 20% discount')...")
+
+    pending_prompt = st.session_state.get("pending_prompt")
+
+    # 4. EXECUTION & IN-LINE LOADING
+    if chat_prompt or pending_prompt:
+        prompt = chat_prompt if chat_prompt else pending_prompt
+        action_text = st.session_state.get("pending_action", "Refining Campaign...")
+
+        # Button prompts stay hidden, typed prompts render in the UI
+        is_hidden = True if pending_prompt else False
+        st.session_state.chat_history.append({"role": "user", "content": prompt, "hidden": is_hidden})
+
+        if not is_hidden:
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+        scroll_to_bottom()
+
+        # Render the loading animation INSIDE the AI's chat bubble
+        with st.chat_message("assistant"):
+            with st.status(action_text, expanded=True) as status:
                 _, st.session_state.chat_history = generate_action_response(
                     st.session_state.chat_history, st.session_state.current_segment, st.session_state.top_category, prompt
                 )
-                st.rerun()
+
+                status.update(label="Complete!", state="complete", expanded=False)
+
+            st.write_stream(stream_text(st.session_state.chat_history[-1]["content"]))
+
+        st.session_state.scroll_pending = True
+
+        # Clean the triggers and finalize the render
+        if "pending_prompt" in st.session_state:
+            del st.session_state["pending_prompt"]
+        if "pending_action" in st.session_state:
+            del st.session_state["pending_action"]
+        st.rerun()
+
