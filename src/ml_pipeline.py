@@ -213,7 +213,6 @@ def predict_single_customer(
     monetary: float,
     avg_review_score: float,
     review_count: int,
-    low_review_flag: int,
 ) -> Dict[str, Any]:
     """
     Predict the segment for ONE customer.
@@ -236,8 +235,6 @@ def predict_single_customer(
         review_count:
             Number of reviews.
 
-        low_review_flag:
-            Binary low-review indicator.
 
     Returns:
         Dictionary containing:
@@ -258,7 +255,6 @@ def predict_single_customer(
                 "Monetary": monetary,
                 "avg_review_score": avg_review_score,
                 "review_count": review_count,
-                "low_review_flag": low_review_flag,
             }
         ]
     )
@@ -313,7 +309,6 @@ def batch_predict_csv(
         Monetary
         avg_review_score
         review_count
-        low_review_flag
 
     Returns:
         Original DataFrame plus:
