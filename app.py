@@ -1,3 +1,4 @@
+from src.auth import require_login
 import streamlit as st
 import time
 
@@ -82,6 +83,7 @@ st.set_page_config(
     page_icon="🎯",
     layout="wide"
 )
+require_login()
 
 # Initialize Session State
 if "chat_history" not in st.session_state:
