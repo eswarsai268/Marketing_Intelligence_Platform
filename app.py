@@ -80,6 +80,9 @@ def preserve_scroll():
         </script>
     """, unsafe_allow_javascript=True)
 
+def change_app_mode():
+    st.session_state.app_mode = st.session_state.nav_selection
+
 preserve_scroll()
 
 # ==========================================
@@ -106,6 +109,10 @@ if "full_screen" not in st.session_state:
     st.session_state.full_screen = False
 if "scroll_pending" not in st.session_state:
     st.session_state.scroll_pending = False
+if "batch_chat_history" not in st.session_state:
+    st.session_state.batch_chat_history = []
+if "batch_scroll_pending" not in st.session_state:
+    st.session_state.batch_scroll_pending = False
 
 # Load external CSS
 with open("style.css") as f:
@@ -126,7 +133,7 @@ if not st.session_state.full_screen:
         image_data = ""
 
     # 2. Header Columns (Logo | Title | Logout)
-    header_col1, header_col2, header_col3 = st.columns([0.06, 0.84, 0.10])
+    header_col1, header_col2, header_col3, header_col4 = st.columns([0.06, 0.78, 0.10, 0.06])
 
     with header_col1:
         if image_data:
@@ -152,10 +159,23 @@ if not st.session_state.full_screen:
         )
         
     with header_col3:
-        # st.markdown("<br>", unsafe_allow_html=True) # Pushes button down slightly to align with text
-        if st.button("Logout", use_container_width=True):
+        
+        if st.button("Logout", width='stretch'):
             st.session_state.clear()
             st.rerun()
+
+    with header_col4:
+        # Render the Google Profile picture as a perfect circle
+        profile_pic_url = st.session_state.get("user_picture", "")
+        if profile_pic_url:
+            st.markdown(
+                f"""
+                <div style="display: flex; justify-content: flex-end;">
+                    <img src="{profile_pic_url}" width="42" height="42" style="border-radius: 50%; border: 2px solid #E2E8F0; object-fit: cover;">
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
     # 3. Description & Divider
     st.markdown(
@@ -176,31 +196,85 @@ if not st.session_state.full_screen:
     ) 
 
 # ==========================================
-# NEW BLOCK: SIDEBAR NAVIGATION
+# SIDEBAR NAVIGATION
 # ==========================================
 
-# 1. Initialize the default page on first load
 if "app_mode" not in st.session_state:
     st.session_state.app_mode = "Single Customer Analysis"
 
 with st.sidebar:
-    st.markdown("### Navigation")
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # 2. Dynamic Button Styling (Highlights the active page)
-    btn_type_single = "primary" if st.session_state.app_mode == "Single Customer Analysis" else "secondary"
-    btn_type_batch = "primary" if st.session_state.app_mode == "Batch CSV Processor" else "secondary"
-    
-    # 3. The Clickable Text Links (Buttons)
-    if st.button("Single Customer Analysis", type=btn_type_single, use_container_width=True):
-        st.session_state.app_mode = "Single Customer Analysis"
-        st.rerun()
-        
-    if st.button("Batch CSV Processor", type=btn_type_batch, use_container_width=True):
-        st.session_state.app_mode = "Batch CSV Processor"
-        st.rerun()
-        
-    st.markdown("---")
+
+    # ==========================================
+    # MARKETRON BRAND
+    # ==========================================
+
+    st.markdown(
+        """
+        <div style="
+            color: #2563EB;
+            font-size: 1.45rem;
+            font-weight: 750;
+            letter-spacing: 1.5px;
+            margin: 4px 0 18px 0;
+        ">
+            MARKETRON
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # ==========================================
+    # USER / LOGIN CARD
+    # ==========================================
+
+    with st.container(border=True):
+
+        st.success("✅ Logged in")
+
+        user_name = getattr(st.user, "name", "User")
+
+        st.markdown(
+            f"""
+            <div style="
+                font-size: 0.95rem;
+                color: #334155;
+                margin: 4px 0 12px 0;
+            ">
+                Welcome, <strong>{user_name}</strong>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        if st.button(
+            "Logout",
+            key="sidebar_logout",
+            width="stretch"
+        ):
+            st.session_state.clear()
+            st.logout()
+
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+
+    # ==========================================
+    # NAVIGATION
+    # ==========================================
+
+    nav_options = [
+        "Single Customer Analysis",
+        "Batch CSV Processor"
+    ]
+
+    with st.container(key="sidebar_navigation"):
+
+        st.radio(
+            "Navigation",
+            options=nav_options,
+            key="nav_selection",
+            index=nav_options.index(st.session_state.app_mode),
+            on_change=change_app_mode,
+            label_visibility="collapsed"
+        )
 
 
 # ==========================================
@@ -238,7 +312,7 @@ if st.session_state.app_mode == "Single Customer Analysis":
                             options=["Full Price Consumers", "Bargain Hunters", "Seasonal Shoppers"]
                         )
                     
-                    predict_btn = st.form_submit_button("🔍 Analyze Segment Metrics",key="analyze_btn", use_container_width=True)
+                    predict_btn = st.form_submit_button("🔍 Analyze Segment Metrics",key="analyze_btn", width='stretch')
 
             with banner_right:
                 st.markdown("""
@@ -326,12 +400,12 @@ if st.session_state.app_mode == "Single Customer Analysis":
             nav_c1, nav_c2 = st.columns([5, 1])
             with nav_c1:
                 if st.session_state.full_screen:
-                    if st.button("⬅️ Back to Dashboard",key="back_btn" ,use_container_width=False):
+                    if st.button("⬅️ Back to Dashboard",key="back_btn" ,width='content'):
                         st.session_state.full_screen = False
                         st.rerun()
             with nav_c2:
                 if not st.session_state.full_screen:
-                    if st.button("⛶ Full Screen",key="fullscreen_btn", use_container_width=True):
+                    if st.button("⛶ Full Screen",key="fullscreen_btn", width='stretch'):
                         st.session_state.full_screen = True
                         st.rerun()
             
@@ -341,7 +415,7 @@ if st.session_state.app_mode == "Single Customer Analysis":
             btn_c1, btn_c2, btn_c3 = st.columns(3)
             
             with btn_c1:
-                if st.button("📧 Email Draft", key="email_btn", use_container_width=True):
+                if st.button("📧 Email Draft", key="email_btn", width='stretch'):
                     st.session_state.pending_prompt = "Write a high-converting marketing email template (with a subject line) for this segment. Give them a compelling reason to buy again today."
                     st.session_state.pending_action = "Drafting Email Campaign..."
                     st.rerun()
@@ -353,7 +427,7 @@ if st.session_state.app_mode == "Single Customer Analysis":
                 """, unsafe_allow_html=True)
                         
             with btn_c2:
-                if st.button("📢 Social Ad Copy", key="ad_btn", use_container_width=True):
+                if st.button("📢 Social Ad Copy", key="ad_btn", width='stretch'):
                     st.session_state.pending_prompt = "Draft short, punchy Facebook/Instagram Ad copy for this segment. Include a Headline, Body Text, and CTA."
                     st.session_state.pending_action = "Drafting Ad Campaign..."
                     st.rerun()
@@ -365,7 +439,7 @@ if st.session_state.app_mode == "Single Customer Analysis":
                 """, unsafe_allow_html=True)
                         
             with btn_c3:
-                if st.button("🎯 Retention Strategy", key="strategy_btn", use_container_width=True):
+                if st.button("🎯 Retention Strategy", key="strategy_btn", width='stretch'):
                     st.session_state.pending_prompt = "Provide a detailed, bulleted 3-step retention strategy and follow-up sequence for this segment."
                     st.session_state.pending_action = "Building Strategy..."
                     st.rerun()
@@ -495,7 +569,7 @@ elif st.session_state.app_mode == "Batch CSV Processor":
                     column_map["spend"] = st.selectbox("Spend/Price", options=csv_headers)
             
             # 4. EXECUTION & ERROR HANDLING
-            if st.button("🚀 Process Batch Data", use_container_width=True):
+            if st.button("🚀 Process Batch Data", width='stretch'):
                 with st.spinner("Classifying segments..."):
                     try:
                         mapped_df = process_mapped_data(raw_df, mapping_mode, column_map)
@@ -544,14 +618,14 @@ elif st.session_state.app_mode == "Batch CSV Processor":
             st.write("Percentage of your total customer base.")
             fig_pie = px.pie(results_df, names="Segment", hole=0.4, color="Segment")
             fig_pie.update_layout(margin=dict(t=0, b=0, l=0, r=0))
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.plotly_chart(fig_pie, width='stretch')
             
         with chart_col2:
             st.markdown("#### Customer Count per Segment")
             st.write("Total volume of customers in each cohort.")
             fig_bar_count = px.histogram(results_df, x="Segment", color="Segment")
             fig_bar_count.update_layout(xaxis_title="", yaxis_title="Number of Customers", showlegend=False)
-            st.plotly_chart(fig_bar_count, use_container_width=True)
+            st.plotly_chart(fig_bar_count, width='stretch')
 
         # 3. SPEND & 3D SCATTER (Row 2)
         chart_col3, chart_col4 = st.columns(2)
@@ -562,7 +636,7 @@ elif st.session_state.app_mode == "Batch CSV Processor":
             avg_spend_df = results_df.groupby("Segment")["Monetary"].mean().reset_index()
             fig_bar_spend = px.bar(avg_spend_df, x="Segment", y="Monetary", color="Segment")
             fig_bar_spend.update_layout(xaxis_title="", yaxis_title="Avg Spend (₹)", showlegend=False)
-            st.plotly_chart(fig_bar_spend, use_container_width=True)
+            st.plotly_chart(fig_bar_spend, width='stretch')
             
         with chart_col4:
             st.markdown("#### 3D Customer Universe")
@@ -573,14 +647,14 @@ elif st.session_state.app_mode == "Batch CSV Processor":
                 color="Segment", opacity=0.7, size_max=10
             )
             fig_3d.update_layout(margin=dict(t=0, b=0, l=0, r=0))
-            st.plotly_chart(fig_3d, use_container_width=True)
+            st.plotly_chart(fig_3d, width='stretch')
 
         st.markdown("---")
         
         # 4. FULL INTERACTIVE DATABASE
         st.markdown("### 📋 Customer Database")
         st.write("Your original data, now enhanced with ML segment predictions. You can sort and filter this table directly.")
-        st.dataframe(results_df, use_container_width=True, height=250)
+        st.dataframe(results_df, width='stretch', height=250)
         
         csv_export = results_df.to_csv(index=False).encode('utf-8')
         st.download_button(
@@ -592,9 +666,12 @@ elif st.session_state.app_mode == "Batch CSV Processor":
 
         st.markdown("---")
         
-        # 5. AI CAMPAIGN GENERATOR
+        # ============================================================
+        # 5. AI CAMPAIGN GENERATOR (MIRRORED ENGINE)
+        # ============================================================
+        st.markdown("---")
         st.markdown("### 🤖 Generate Targeted Marketing Strategy")
-        st.write("Select a customer segment to instantly generate a hyper-personalized marketing approach using our AI agent.")
+        st.write("Select a customer segment to instantly generate a hyper-personalized marketing approach using AI.")
         
         available_segments = sorted(results_df["Segment"].unique())
         
@@ -608,15 +685,152 @@ elif st.session_state.app_mode == "Batch CSV Processor":
             )
             
         with gen_col2:
-            if st.button("🚀 Generate Approach", use_container_width=True):
-                st.session_state.target_generation_segment = target_segment
-                st.session_state.trigger_ai_generation = True
-                
-        if st.session_state.get("trigger_ai_generation"):
-            st.info(f"Connecting to AI Agent to generate strategy for **{st.session_state.target_generation_segment}**... (LLM logic goes here!)")
+            generate_btn = st.button("🚀 Generate Approach", key="batch_generate_btn", width='stretch')
             
+        # THE FIX: Run the initial loading widget outside the chatbox, exactly like the main page!
+        if generate_btn:
+            st.session_state.target_generation_segment = target_segment
+            st.session_state.batch_chat_history = []
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            with st.status(f"🧠 Processing Strategy for {target_segment}...", expanded=True) as status:
+                st.write("Connecting to AI Agent...")
+                time.sleep(0.4)
+                st.write("Crafting your AI-powered campaign approach...")
+                
+                initial_prompt = "Provide a brief, high-level overview of exactly how we should market to this specific segment."
+                _, st.session_state.batch_chat_history = generate_action_response(
+                    st.session_state.batch_chat_history, 
+                    st.session_state.target_generation_segment, 
+                    "General Merchandise", 
+                    "None",
+                    initial_prompt
+                )
+                
+                # HIDDEN FLAG: Hide the automated initial prompt from the UI
+                st.session_state.batch_chat_history[-2]["hidden"] = True
+                
+                status.update(label="Strategy Generated!", state="complete", expanded=False)
+                
+            st.session_state.trigger_ai_generation = True
+
+        # Render Strategy & Campaign Workspace
+        if st.session_state.get("trigger_ai_generation"):
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown(f"""
+                <div style="background-color: #ECFDF5; border: 1px solid #6EE7B7; border-radius: 10px; padding: 14px 20px; margin-bottom: 15px;">
+                    <span style="color: #065F46; font-size: 0.9em; font-weight: 500;">Active Cohort Target</span><br>
+                    <span style="color: #047857; font-size: 1.5em; font-weight: 800;">{st.session_state.target_generation_segment}</span>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # ACTION BUTTONS CONTAINER
+            with st.container(key="batch_action_container"):
+                btn_c1, btn_c2, btn_c3 = st.columns(3)
+                
+                with btn_c1:
+                    if st.button("📧 Email Draft", key="batch_email_btn", width='stretch'):
+                        st.session_state.batch_pending_prompt = "Write a high-converting marketing email template (with a subject line) for this segment. Give them a compelling reason to buy again today."
+                        st.session_state.batch_pending_action = "Drafting Email Campaign..."
+                        st.rerun()
+                    
+                    st.markdown("""
+                        <div style="background-color: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 12px; text-align: center; margin-top: 5px;">
+                            <span style="color: #991B1B; font-size: 0.85em; font-weight: 500;">Direct-response template for immediate conversions.</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+                            
+                with btn_c2:
+                    if st.button("📢 Social Ad Copy", key="batch_ad_btn", width='stretch'):
+                        st.session_state.batch_pending_prompt = "Draft short, punchy Facebook/Instagram Ad copy for this segment. Include a Headline, Body Text, and CTA."
+                        st.session_state.batch_pending_action = "Drafting Ad Campaign..."
+                        st.rerun()
+                    
+                    st.markdown("""
+                        <div style="background-color: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 12px; text-align: center; margin-top: 5px;">
+                            <span style="color: #92400E; font-size: 0.85em; font-weight: 500;">Scroll-stopping social media ad creative.</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+                            
+                with btn_c3:
+                    if st.button("🎯 Retention Strategy", key="batch_strategy_btn", width='stretch'):
+                        st.session_state.batch_pending_prompt = "Provide a detailed, bulleted 3-step retention strategy and follow-up sequence for this segment."
+                        st.session_state.batch_pending_action = "Building Strategy..."
+                        st.rerun()
+                    
+                    st.markdown("""
+                        <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 12px; text-align: center; margin-top: 5px;">
+                            <span style="color: #1E40AF; font-size: 0.85em; font-weight: 500;">Step-by-step engagement and retention plan.</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+            # CHAT BOX CONTAINER
+            st.markdown("<br>", unsafe_allow_html=True)
+            batch_chat_box = st.container(height=500, key="batch_campaign_chat_box")
+            
+            with batch_chat_box:
+                if len(st.session_state.batch_chat_history) == 0:
+                    st.caption("Click a campaign button above or use the chat prompt to start drafting.")
+                
+                for msg in st.session_state.batch_chat_history:
+                    if msg["role"] == "system" or msg.get("hidden", False):
+                        continue
+                    with st.chat_message(msg["role"]):
+                        st.markdown(msg["content"])
+
+            if st.session_state.batch_scroll_pending:
+                scroll_to_bottom()
+                st.session_state.batch_scroll_pending = False
+
+            # CHAT INPUT & PROMPT HANDLING
+            batch_chat_prompt = st.chat_input("Refine this campaign (e.g., 'Make it more urgent', 'Focus on reactivation')...", key="batch_chat_input")
+            batch_pending_prompt = st.session_state.get("batch_pending_prompt")
+
+            if batch_chat_prompt or batch_pending_prompt:
+                prompt = batch_chat_prompt if batch_chat_prompt else batch_pending_prompt
+                action_text = st.session_state.get("batch_pending_action", "Refining Campaign...")
+
+                is_hidden = True if batch_pending_prompt else False
+
+                with batch_chat_box:
+                    if not is_hidden:
+                        with st.chat_message("user"):
+                            st.markdown(prompt)
+
+                    scroll_to_bottom()
+
+                    with st.chat_message("assistant"):
+                        with st.status(action_text, expanded=True) as status:
+
+                            _, st.session_state.batch_chat_history = generate_action_response(
+                                st.session_state.batch_chat_history,
+                                
+                                st.session_state.target_generation_segment,
+                                "General Merchandise",
+                                "None",
+                                prompt
+                            )
+
+                            # THE FIX: Retroactively hide the prompt AFTER the LLM runs.
+                            # This guarantees the System Prompt is never bypassed!
+                            if is_hidden:
+                                st.session_state.batch_chat_history[-2]["hidden"] = True
+
+                            status.update(label="Complete!", state="complete", expanded=False)
+
+                        st.write_stream(stream_text(st.session_state.batch_chat_history[-1]["content"]))
+
+                st.session_state.batch_scroll_pending = True
+
+                if "batch_pending_prompt" in st.session_state:
+                    del st.session_state["batch_pending_prompt"]
+                if "batch_pending_action" in st.session_state:
+                    del st.session_state["batch_pending_action"]
+                st.rerun()
+
         st.markdown("---")
-        if st.button("🔄 Upload New File"):
+        if st.button("🔄 Upload New File", key="batch_upload_new_btn"):
             st.session_state.batch_processed = False
+            st.session_state.trigger_ai_generation = False
+            st.session_state.batch_chat_history = []
             st.rerun()
-    pass

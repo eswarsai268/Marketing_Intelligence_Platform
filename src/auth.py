@@ -1,5 +1,81 @@
 import streamlit as st
+import requests
+import base64
+from io import BytesIO
+from PIL import Image, ImageOps, ImageDraw
 
+def make_circular_profile_image(image_url: str) -> str:
+    """
+    Download a profile image, crop it to a square,
+    make it circular, and return it as a base64
+    PNG data URI suitable for an HTML <img src="">.
+    """
+
+    response = requests.get(
+        image_url,
+        timeout=10,
+        headers={
+            "User-Agent": "Mozilla/5.0"
+        }
+    )
+
+    response.raise_for_status()
+
+    # Open downloaded image
+    image = Image.open(
+        BytesIO(response.content)
+    ).convert("RGBA")
+
+    # Crop to a centered square
+    image = ImageOps.fit(
+        image,
+        (96, 96),
+        method=Image.Resampling.LANCZOS,
+        centering=(0.5, 0.5)
+    )
+
+    # Create circular transparency mask
+    mask = Image.new(
+        "L",
+        (96, 96),
+        0
+    )
+
+    draw = ImageDraw.Draw(mask)
+
+    draw.ellipse(
+        (0, 0, 95, 95),
+        fill=255
+    )
+
+    # Apply circular mask
+    circular_image = Image.new(
+        "RGBA",
+        (96, 96),
+        (255, 255, 255, 0)
+    )
+
+    circular_image.paste(
+        image,
+        (0, 0),
+        mask
+    )
+
+    # Convert to PNG bytes
+    output = BytesIO()
+
+    circular_image.save(
+        output,
+        format="PNG"
+    )
+
+    # Convert to base64
+    encoded_image = base64.b64encode(
+        output.getvalue()
+    ).decode("utf-8")
+
+    # Return an HTML-safe data URI
+    return f"data:image/png;base64,{encoded_image}"
 
 def require_login():
     """Require Google authentication before showing the app."""
@@ -14,16 +90,22 @@ def require_login():
 
         st.stop()
 
-    # User is logged in
-    st.sidebar.success("✅ Logged in")
 
     # Safely display available user information
     user = st.user
 
-    if hasattr(user, "name"):
-        st.sidebar.write(f"Welcome, **{user.name}**")
-    else:
-        st.sidebar.write("Welcome!")
+    # 1. Grab Google's profile picture and convert it
+    #    into a circular base64 PNG for app.py.
+    profile_pic_url = getattr(user, "picture", "")
 
-    if st.sidebar.button("Logout"):
-        st.logout()
+    if profile_pic_url:
+        try:
+            st.session_state.user_picture = (
+                make_circular_profile_image(
+                    profile_pic_url
+                )
+            )
+        except Exception:
+            st.session_state.user_picture = ""
+    else:
+        st.session_state.user_picture = ""    

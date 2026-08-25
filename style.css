@@ -114,26 +114,26 @@
     }
 
     /* 5. Action button colors — matched to caption cards below them */
-    .st-key-email_btn button {
+    .st-key-email_btn button, .st-key-batch_email_btn button {
         background-color: rgba(220, 38, 38, 0.75) !important;
         border: 1px solid #DC2626 !important;
     }
-    .st-key-email_btn button p { color: #FFFFFF !important; font-weight: 600 !important; }
-    .st-key-email_btn button:hover { background-color: rgba(220, 38, 38, 0.9) !important; }
+    .st-key-email_btn button p, .st-key-batch_email_btn button p { color: #FFFFFF !important; font-weight: 600 !important; }
+    .st-key-email_btn button:hover, .st-key-batch_email_btn button:hover { background-color: rgba(220, 38, 38, 0.9) !important; }
 
-    .st-key-ad_btn button {
+    .st-key-ad_btn button, .st-key-batch_ad_btn button {
         background-color: rgba(217, 119, 6, 0.75) !important;
         border: 1px solid #D97706 !important;
     }
-    .st-key-ad_btn button p { color: #FFFFFF !important; font-weight: 600 !important; }
-    .st-key-ad_btn button:hover { background-color: rgba(217, 119, 6, 0.9) !important; }
+    .st-key-ad_btn button p, .st-key-batch_ad_btn button p { color: #FFFFFF !important; font-weight: 600 !important; }
+    .st-key-ad_btn button:hover, .st-key-batch_ad_btn button:hover { background-color: rgba(217, 119, 6, 0.9) !important; }
 
-    .st-key-strategy_btn button {
+    .st-key-strategy_btn button, .st-key-batch_strategy_btn button {
         background-color: rgba(30, 64, 175, 0.75) !important;
         border: 1px solid #1E40AF !important;
     }
-    .st-key-strategy_btn button p { color: #FFFFFF !important; font-weight: 600 !important; }
-    .st-key-strategy_btn button:hover { background-color: rgba(30, 64, 175, 0.9) !important; }
+    .st-key-strategy_btn button p, .st-key-batch_strategy_btn button p { color: #FFFFFF !important; font-weight: 600 !important; }
+    .st-key-strategy_btn button:hover, .st-key-batch_strategy_btn button:hover { background-color: rgba(30, 64, 175, 0.9) !important; }
 
     /* 6. USER CHAT BUBBLE CUSTOMIZATION */
     /* Target the User Message Container, reverse the layout (icon on right), and apply light blue */
@@ -282,4 +282,56 @@
     max-width: 1000px;
     margin: 0 auto;
 }
+
+/* ================================
+   SIDEBAR NAVIGATION
+   ================================ */
+
+.st-key-sidebar_navigation [role="radiogroup"] {
+    gap: 4px;
+}
+
+/* Each navigation item */
+.st-key-sidebar_navigation
+[role="radiogroup"]
+label[data-baseweb="radio"] {
+    border-radius: 8px;
+    padding: 9px 12px;
+    margin: 2px 0;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    border: none;
+}
+
+/* Hide the actual radio indicator */
+.st-key-sidebar_navigation
+[role="radiogroup"]
+label[data-baseweb="radio"] > div:first-child {
+    display: none !important;
+}
+
+/* Selected navigation item */
+.st-key-sidebar_navigation
+[role="radiogroup"]
+label[data-baseweb="radio"]:has(input[type="radio"]:checked) {
+    background-color: #EFF6FF;
+}
+
+/* Selected text */
+.st-key-sidebar_navigation
+[role="radiogroup"]
+label[data-baseweb="radio"]:has(input[type="radio"]:checked) p {
+    color: #2563EB !important;
+    font-weight: 650 !important;
+}
+
+/* Normal text */
+.st-key-sidebar_navigation
+[role="radiogroup"]
+label[data-baseweb="radio"] p {
+    margin: 0 !important;
+    color: #334155;
+}
+
+    
     
