@@ -58,7 +58,7 @@ ML_FEATURES = [
 # business-friendly segment names.
 
 SEGMENT_MAPPING = {
-    2: {
+    1: {
         "name": "High-Value Customers",
         "description": (
             "High-spending, frequent repeat customers "
@@ -81,7 +81,7 @@ SEGMENT_MAPPING = {
         ),
     },
 
-    1: {
+    2: {
         "name": "Churned/Lost Customers",
         "description": (
             "Long-inactive customers unlikely to return without a strong win-back push."
@@ -177,6 +177,31 @@ def _validate_numeric_features(df: pd.DataFrame) -> None:
                 f"Column '{column}' contains infinite values."
             )
 
+# ============================================================
+# MODEL FEATURE PREPROCESSING
+# ============================================================
+
+def _prepare_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Apply the exact same feature transformations used during training.
+
+    Recency:
+        kept in its original scale
+
+    Frequency:
+        log1p transformation
+
+    Monetary:
+        log1p transformation
+    """
+
+    features = df[ML_FEATURES].copy()
+
+    features["Frequency"] = np.log1p(features["Frequency"])
+    features["Monetary"] = np.log1p(features["Monetary"])
+
+    return features
+
 
 # ============================================================
 # SEGMENT INFORMATION
@@ -204,6 +229,7 @@ def _get_segment_info(cluster_id: int) -> Dict[str, str]:
 # 1. SINGLE CUSTOMER INFERENCE
 # ============================================================
 
+
 # ============================================================
 # 1. SINGLE CUSTOMER INFERENCE
 # ============================================================
@@ -214,23 +240,33 @@ def predict_single_customer(
     monetary: float
 ) -> Dict[str, Any]:
     """
-    Predict the segment for ONE customer.
+    Predict the segment for one customer using
+    the exact preprocessing used during training.
     """
+
     scaler, kmeans_model = _load_models()
 
     customer_df = pd.DataFrame([{
         "Recency": recency,
         "Frequency": frequency,
-        "Monetary": monetary
+        "Monetary": monetary,
     }])
 
-    # Use the scaler's own recorded column order — avoids any hardcoding mismatch
-    expected_columns = scaler.feature_names_in_
-    scaled_array = scaler.transform(customer_df[expected_columns])
-    scaled_customer = pd.DataFrame(scaled_array, columns=expected_columns)
+    _validate_numeric_features(customer_df)
 
-    prediction = kmeans_model.predict(scaled_customer)
-    cluster_id = int(prediction[0])
+    # Apply training-time transformations
+    prepared_features = _prepare_features(customer_df)
+
+    # Preserve feature names to avoid sklearn warnings
+    scaled_customer = pd.DataFrame(
+        scaler.transform(prepared_features),
+        columns=ML_FEATURES
+    )
+
+    cluster_id = int(
+        kmeans_model.predict(scaled_customer)[0]
+    )
+
     segment_info = _get_segment_info(cluster_id)
 
     return {
@@ -239,6 +275,9 @@ def predict_single_customer(
         "description": segment_info["description"],
     }
 
+# ============================================================
+# 2. BATCH CSV / DATAFRAME PREDICTION
+# ============================================================
 
 # ============================================================
 # 2. BATCH CSV / DATAFRAME PREDICTION
@@ -250,78 +289,66 @@ def batch_predict_csv(
     """
     Predict customer segments for an entire DataFrame.
 
-    Required columns:
-
+    Required ML columns:
         Recency
         Frequency
         Monetary
-        avg_review_score
-        review_count
 
-    Returns:
-        Original DataFrame plus:
-
+    Returns the original DataFrame plus:
         Predicted_Cluster_ID
         Segment_Name
+        Segment
     """
 
     if not isinstance(input_df, pd.DataFrame):
-
         raise TypeError(
             "input_df must be a pandas DataFrame."
         )
 
     if input_df.empty:
-
         raise ValueError(
             "The uploaded DataFrame is empty."
         )
 
-    # Load trained assets
     scaler, kmeans_model = _load_models()
 
-    # Validate columns
     _validate_input_columns(input_df)
-
-    # Validate numeric values
     _validate_numeric_features(input_df)
 
-    # Make a copy so original data isn't changed
     result_df = input_df.copy()
 
+    # Apply the exact same transformations used during training
+    prepared_features = _prepare_features(result_df)
+
     # Scale using the trained scaler
-    scaled_data = scaler.transform(
-        result_df[ML_FEATURES]
+    scaled_data = pd.DataFrame(
+        scaler.transform(prepared_features),
+        columns=ML_FEATURES,
+        index=result_df.index
     )
 
+    # Predict clusters
+    predictions = kmeans_model.predict(scaled_data)
 
-    # Predict all customers
-    predictions = kmeans_model.predict(
-        scaled_data
-    )
-
-    # Add cluster ID
     result_df["Predicted_Cluster_ID"] = (
         predictions.astype(int)
     )
 
-    # Add business segment
+    # Business segment name
     result_df["Segment_Name"] = (
         result_df["Predicted_Cluster_ID"]
-        .map(
-            {
-                cluster_id: info["name"]
-                for cluster_id, info
-                in SEGMENT_MAPPING.items()
-            }
-        )
+        .map({
+            cluster_id: info["name"]
+            for cluster_id, info in SEGMENT_MAPPING.items()
+        })
         .fillna(
             result_df["Predicted_Cluster_ID"]
-            .apply(
-                lambda x: f"Cluster {x}"
-            )
+            .apply(lambda x: f"Cluster {x}")
         )
     )
+
+    # Compatibility alias for the existing dashboard
+    result_df["Segment"] = result_df["Segment_Name"]
 
     return result_df
 
