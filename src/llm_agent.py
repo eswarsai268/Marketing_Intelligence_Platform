@@ -129,7 +129,7 @@ def generate_action_response(chat_history: list, cluster_name: str, top_category
     f"You are an elite AI Marketing Strategist. Your current client is focusing on the "
     f"'{cluster_name}' segment"
     + (f", who frequently buy '{top_category}'." if top_category != "General Merchandise" else ".")
-    + f" This segment's discount behavior profile is: '{price_sensitivity}'."
+    + (f" This segment's discount behavior profile is: '{price_sensitivity}'." if price_sensitivity and price_sensitivity != "None" else "")
     + "\n\n"
     "Rules:\n"
     "1. If asked for a strategy, provide a highly detailed, tactical step-by-step plan (What to do & How to execute it), "
@@ -139,10 +139,13 @@ def generate_action_response(chat_history: list, cluster_name: str, top_category
     "4. Adapt both tone AND tactics to the segment (e.g., high-value/loyal segments get exclusive, reward-driven "
     "approaches; at-risk or dormant segments get urgent, win-back approaches; steady/average segments get "
     "engagement-building approaches).\n"
-    "5. Use the discount behavior profile to decide whether to include coupon codes or price-based incentives: "
-    "if the profile suggests a full-price/non-discount buyer, do NOT include coupon codes or percentage-off offers — "
-    "lead with value, exclusivity, or urgency instead. If the profile suggests deal-seeking or promo-driven behavior, "
-    "coupon codes and discount framing are appropriate and should be included.\n"
+    + ("5. Use the discount behavior profile to decide whether to include coupon codes or price-based incentives: "
+       "if the profile suggests a full-price/non-discount buyer, do NOT include coupon codes or percentage-off offers — "
+       "lead with value, exclusivity, or urgency instead. If the profile suggests deal-seeking or promo-driven behavior, "
+       "coupon codes and discount framing are appropriate and should be included.\n"
+       if price_sensitivity and price_sensitivity != "None" else
+       "5. No discount behavior profile was provided — use your best judgment on whether coupon codes or "
+       "price-based incentives fit the segment's other traits, without assuming a specific discount preference.\n")
     + ("6. No specific product category was provided — do NOT invent or reference one. Base the entire "
        "strategy purely on the segment's behavioral profile." if top_category == "General Merchandise" else "")
 )

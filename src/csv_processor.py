@@ -66,18 +66,18 @@ def process_mapped_data(df: pd.DataFrame, mapping_mode: str, column_map: dict) -
 def _process_direct_rfm(df: pd.DataFrame, column_map: dict) -> pd.DataFrame:
     """
     Path A: User provides pre-calculated RFM values.
-
-    Monetary is expected in GBP and is converted to INR
-    to match the training pipeline.
+    Monetary is expected in GBP and is converted to INR.
     """
     try:
         mapped_df = df.rename(columns={
+            column_map["customer_id"]: "CustomerID",  # 👈 Added Customer ID mapping
             column_map["recency"]: "Recency",
             column_map["frequency"]: "Frequency",
             column_map["monetary"]: "Monetary"
         })
 
-        required = ["Recency", "Frequency", "Monetary"]
+        # 👈 Added CustomerID to required list
+        required = ["CustomerID", "Recency", "Frequency", "Monetary"]
         missing = [col for col in required if col not in mapped_df.columns]
 
         if missing:
@@ -86,27 +86,18 @@ def _process_direct_rfm(df: pd.DataFrame, column_map: dict) -> pd.DataFrame:
             )
 
         # Ensure Monetary is numeric
-        mapped_df["Monetary"] = pd.to_numeric(
-            mapped_df["Monetary"],
-            errors="coerce"
-        )
+        mapped_df["Monetary"] = pd.to_numeric(mapped_df["Monetary"], errors="coerce")
 
         if mapped_df["Monetary"].isna().any():
-            raise CSVProcessorError(
-                "Monetary column contains missing or non-numeric values."
-            )
+            raise CSVProcessorError("Monetary column contains missing/non-numeric values.")
 
         # Convert GBP → INR to match training
-        mapped_df["Monetary"] = (
-            mapped_df["Monetary"] * GBP_TO_INR
-        )
+        mapped_df["Monetary"] = mapped_df["Monetary"] * GBP_TO_INR
 
         return mapped_df
 
     except KeyError as e:
-        raise CSVProcessorError(
-            f"Mapping configuration is missing a required field: {e}"
-        )
+        raise CSVProcessorError(f"Mapping configuration is missing a required field: {e}")
 
 # ============================================================
 # BLOCK 2: RAW TRANSACTION AGGREGATION (PATH B)

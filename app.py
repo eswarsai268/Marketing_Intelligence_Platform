@@ -428,7 +428,7 @@ if st.session_state.app_mode == "Single Customer Analysis":
                     with st.status(action_text, expanded=True) as status:
                         _, st.session_state.chat_history = generate_action_response(
                             st.session_state.chat_history, st.session_state.current_segment, st.session_state.top_category, 
-                            st.session_state.get("price_sensitivity", "Full Price Consumers"),
+                            st.session_state.get("price_sensitivity", "None"),
                             prompt
                         )
 
@@ -474,12 +474,14 @@ elif st.session_state.app_mode == "Batch CSV Processor":
             column_map = {}
             
             if mapping_mode == "direct_rfm":
-                c1, c2, c3 = st.columns(3)
+                c1, c2, c3, c4 = st.columns(4)
                 with c1:
-                    column_map["recency"] = st.selectbox("Recency Column", options=csv_headers)
+                    column_map["customer_id"] = st.selectbox("Customer ID", options=csv_headers)
                 with c2:
-                    column_map["frequency"] = st.selectbox("Frequency Column", options=csv_headers)
+                    column_map["recency"] = st.selectbox("Recency Column", options=csv_headers)
                 with c3:
+                    column_map["frequency"] = st.selectbox("Frequency Column", options=csv_headers)
+                with c4:
                     column_map["monetary"] = st.selectbox("Monetary Column", options=csv_headers)
             else:
                 c1, c2, c3, c4 = st.columns(4)
