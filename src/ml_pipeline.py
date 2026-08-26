@@ -33,7 +33,6 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 MODEL_DIR = PROJECT_ROOT / "models"
-DATA_DIR = PROJECT_ROOT / "data"
 
 SCALER_PATH = MODEL_DIR / "scaler.pkl"
 KMEANS_PATH = MODEL_DIR / "kmeans_model.pkl"
@@ -162,7 +161,6 @@ def _validate_numeric_features(df: pd.DataFrame) -> None:
         )
 
         if converted.isna().any():
-
             bad_count = converted.isna().sum()
 
             raise ValueError(
@@ -177,6 +175,7 @@ def _validate_numeric_features(df: pd.DataFrame) -> None:
                 f"Column '{column}' contains infinite values."
             )
 
+        df[column] = converted
 # ============================================================
 # MODEL FEATURE PREPROCESSING
 # ============================================================

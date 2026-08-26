@@ -118,16 +118,32 @@ def prune_chat_history(chat_history, max_messages=8):
 # UNIFIED CHAT & CAMPAIGN GENERATOR
 # --------------------------------------------------
 
-def generate_action_response(chat_history: list, cluster_name: str, top_category: str, price_sensitivity: str, user_prompt: str):
+def generate_action_response(chat_history: list, cluster_name: str, top_category: str, price_sensitivity: str, user_prompt: str, segment_customer_count: int | None = None,
+    segment_avg_spend: float | None = None):
     """
     Handles both UI button clicks and raw chat inputs, maintaining context.
     """
     
     # If starting a fresh chat, inject the powerful System Prompt first
     if not chat_history:
+        segment_stats_context = ""
+
+        if segment_customer_count is not None:
+            segment_stats_context += (
+                f" The segment currently contains "
+                f"{segment_customer_count:,} customers."
+            )
+
+        if segment_avg_spend is not None:
+            segment_stats_context += (
+                f" Its average customer spend is "
+                f"₹{segment_avg_spend:,.2f}."
+            )
+        
         system_prompt = (
     f"You are an elite AI Marketing Strategist. Your current client is focusing on the "
-    f"'{cluster_name}' segment"
+    f"'{cluster_name}' segment" 
+    + segment_stats_context
     + (f", who frequently buy '{top_category}'." if top_category != "General Merchandise" else ".")
     + (f" This segment's discount behavior profile is: '{price_sensitivity}'." if price_sensitivity and price_sensitivity != "None" else "")
     + "\n\n"
