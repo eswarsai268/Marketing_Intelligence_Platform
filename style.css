@@ -282,4 +282,12 @@
     max-width: 1000px;
     margin: 0 auto;
 }
+/* Make all text blue globally */
+html, body, [class*="css"], .stMarkdown, h1, h2, h3, h4, h5, h6, p, label, span, [data-testid="stWidgetLabel"] p {
+    color: #38BDF8 !important;
     
+}
+/* =========================================
+   BATCH CUSTOMER SEGMENTATION HERO
+   ========================================= */
+
