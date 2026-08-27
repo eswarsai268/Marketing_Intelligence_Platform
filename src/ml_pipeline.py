@@ -346,9 +346,6 @@ def batch_predict_csv(
         )
     )
 
-    # Compatibility alias for the existing dashboard
-    result_df["Segment"] = result_df["Segment_Name"]
-
     return result_df
 
 

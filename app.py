@@ -4,11 +4,33 @@ from pathlib import Path
 
 from src.auth import require_login
 from src.ui_helpers import preserve_scroll
+from src.rag_engine import start_rag_warmup
 
 st.set_page_config(
-    page_title="AI Marketing Intelligence Platform",
+    page_title="Marketron",
     page_icon="🎯",
     layout="wide"
+)
+
+# ==========================================
+# PAGE DEFINITIONS
+# ==========================================
+
+segment_page = st.Page(
+    "pages/segment_analyzer.py",
+    title="Segment Analyzer",
+    default=True
+)
+
+batch_page = st.Page(
+    "pages/batch_segmentation.py",
+    title="Batch Segmentation"
+)
+
+# NAVIGATION ROUTER
+pg = st.navigation(
+    [segment_page, batch_page],
+    position="hidden"
 )
 
 # AUTHENTICATION
@@ -178,26 +200,26 @@ if not st.session_state.full_screen:
         unsafe_allow_html=True
     ) 
 
-# ==========================================
-# PAGE DEFINITIONS
-# ==========================================
+# # ==========================================
+# # PAGE DEFINITIONS
+# # ==========================================
 
-segment_page = st.Page(
-    "pages/segment_analyzer.py",
-    title="Segment Analyzer",
-    default=True
-)
+# segment_page = st.Page(
+#     "pages/segment_analyzer.py",
+#     title="Segment Analyzer",
+#     default=True
+# )
 
-batch_page = st.Page(
-    "pages/batch_segmentation.py",
-    title="Batch Segmentation"
-)
+# batch_page = st.Page(
+#     "pages/batch_segmentation.py",
+#     title="Batch Segmentation"
+# )
 
-# NAVIGATION ROUTER
-pg = st.navigation(
-    [segment_page, batch_page],
-    position="hidden"
-)
+# # NAVIGATION ROUTER
+# pg = st.navigation(
+#     [segment_page, batch_page],
+#     position="hidden"
+# )
 
 # ==========================================
 # CUSTOM SIDEBAR
@@ -272,5 +294,6 @@ with st.sidebar:
         width="stretch"
     )
 
-# RUN SELECTED PAGE
 pg.run()
+
+start_rag_warmup()

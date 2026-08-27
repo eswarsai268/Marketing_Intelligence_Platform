@@ -80,7 +80,10 @@ if predict_btn:
             st.write("Crafting your AI-powered campaign approach...")
             initial_prompt = "Provide a brief, high-level overview of exactly how we should market to this specific segment."
             _, st.session_state.chat_history = generate_action_response(
-                st.session_state.chat_history, st.session_state.current_segment, st.session_state.top_category, st.session_state.price_sensitivity,initial_prompt
+                st.session_state.chat_history, st.session_state.current_segment, st.session_state.top_category, st.session_state.price_sensitivity,initial_prompt,
+                segment_avg_recency=recency,
+                segment_avg_frequency=frequency,
+                segment_avg_spend=monetary
             )
             
             # HIDDEN FLAG: Hide the automated initial prompt from the UI
@@ -226,7 +229,10 @@ if st.session_state.current_segment:
                     _, st.session_state.chat_history = generate_action_response(
                         st.session_state.chat_history, st.session_state.current_segment, st.session_state.top_category, 
                         st.session_state.get("price_sensitivity", "None"),
-                        prompt
+                        prompt,
+                        segment_avg_recency=recency,
+                        segment_avg_frequency=frequency,
+                        segment_avg_spend=monetary
                     )
 
                     status.update(label="Complete!", state="complete", expanded=False)
